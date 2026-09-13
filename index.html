@@ -90,6 +90,7 @@
             padding: 8px 12px;
             border-radius: 5px;
             word-wrap: break-word;
+            font-size: 0.9em;
         }
 
         .message.user {
@@ -103,6 +104,12 @@
             background: #e8eef5;
             color: #333;
             margin-right: 10px;
+        }
+
+        .message.loading {
+            background: #f0f0f0;
+            color: #666;
+            font-style: italic;
         }
 
         .input-group {
@@ -131,6 +138,11 @@
 
         button:hover {
             background: #764ba2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
 
         .info-panel {
@@ -164,6 +176,24 @@
             text-align: center;
         }
 
+        .api-status {
+            font-size: 0.8em;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            text-align: center;
+        }
+
+        .api-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .api-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
@@ -192,15 +222,16 @@
 
         <div class="sidebar">
             <h3>🤖 Qwen AI Assistant</h3>
+            <div class="api-status disconnected" id="apiStatus">🔴 Loading...</div>
             <div class="ai-chat">
                 <div class="chat-messages" id="chatMessages">
                     <div class="message ai">
-                        Hi! I'm your AI assistant. Ask me about mineral deposits, investment opportunities, or resources in any African country.
+                        Hi! I'm your Qwen AI assistant. Ask me about mineral deposits, investment opportunities, or resources in any African country.
                     </div>
                 </div>
                 <div class="input-group">
                     <input type="text" id="userInput" placeholder="Ask about resources..." />
-                    <button onclick="sendMessage()">Send</button>
+                    <button id="sendBtn" onclick="sendMessage()">Send</button>
                 </div>
             </div>
 
@@ -213,108 +244,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <script>
-        // Initialize map
-        const map = L.map('map').setView([0, 20], 3);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        // Sample mineral deposits data
-        const mineralDeposits = [
-            { country: 'South Africa', coords: [-29.6, 25.5], resources: ['Gold', 'Diamonds', 'Platinum'], investment: 'High' },
-            { country: 'Democratic Republic of Congo', coords: [-4.0, 21.8], resources: ['Cobalt', 'Copper', 'Diamonds'], investment: 'Medium' },
-            { country: 'Nigeria', coords: [9.0, 8.6], resources: ['Oil', 'Tin', 'Bauxite'], investment: 'High' },
-            { country: 'Ghana', coords: [5.6, -0.2], resources: ['Gold', 'Bauxite'], investment: 'High' },
-            { country: 'Zambia', coords: [-13.1, 27.8], resources: ['Copper', 'Cobalt'], investment: 'Medium' },
-            { country: 'Ethiopia', coords: [9.1, 40.4], resources: ['Gold', 'Potash', 'Tantalum'], investment: 'Medium' },
-            { country: 'Morocco', coords: [31.9, -6.9], resources: ['Phosphate', 'Iron Ore'], investment: 'High' },
-        ];
-
-        // Add markers to map
-        mineralDeposits.forEach(deposit => {
-            const marker = L.circleMarker([deposit.coords[0], deposit.coords[1]], {
-                radius: 8,
-                fillColor: '#667eea',
-                color: '#667eea',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.7
-            }).addTo(map);
-
-            marker.on('click', function() {
-                displayResourceInfo(deposit);
-            });
-
-            marker.bindPopup(`<b>${deposit.country}</b><br>Tap for details`);
-        });
-
-        function displayResourceInfo(deposit) {
-            document.getElementById('statsText').innerHTML = `
-                <strong>${deposit.country}</strong><br>
-                Investment Level: ${deposit.investment}
-            `;
-
-            const resourcesList = document.getElementById('resourcesList');
-            resourcesList.innerHTML = deposit.resources.map(r => 
-                `<div class="resource-tag">${r}</div>`
-            ).join('');
-        }
-
-        // Qwen AI Chat Integration
-        function sendMessage() {
-            const input = document.getElementById('userInput');
-            const message = input.value.trim();
-
-            if (message === '') return;
-
-            // Display user message
-            addChatMessage(message, 'user');
-            input.value = '';
-
-            // Simulate AI response (replace with actual Qwen API call)
-            setTimeout(() => {
-                const aiResponse = generateAIResponse(message);
-                addChatMessage(aiResponse, 'ai');
-            }, 500);
-        }
-
-        function addChatMessage(text, sender) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            messageDiv.textContent = text;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function generateAIResponse(userMessage) {
-            const responses = {
-                'gold': '🏆 Gold is abundantly found in South Africa, Ghana, and Ethiopia. South Africa has the deepest gold mines in the world. Investment opportunities include mining operations and refining facilities.',
-                'copper': '🔨 Copper deposits are significant in Zambia and Democratic Republic of Congo (DRC). These countries are among the top copper producers globally. Great opportunities in value-addition through smelting and manufacturing.',
-                'diamonds': '💎 South Africa and DRC are major diamond producers. Investment in diamond cutting and processing facilities offers high returns.',
-                'investment': '💰 Africa offers diverse investment opportunities: mining operations, value-addition facilities, infrastructure development, and technology integration. Each country has unique advantages.',
-                'default': '📊 I can help you learn about African mineral resources, investment opportunities, and country-specific data. Try asking about specific minerals or countries!'
-            };
-
-            const lowerMessage = userMessage.toLowerCase();
-            for (let key in responses) {
-                if (lowerMessage.includes(key)) {
-                    return responses[key];
-                }
-            }
-            return responses['default'];
-        }
-
-        // Allow Enter key to send messages
-        document.getElementById('userInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        // Display initial welcome
-        addChatMessage('👋 Welcome! Explore Africa\'s mineral wealth and investment opportunities.', 'ai');
-    </script>
+    <script src="js/qwen-api.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
