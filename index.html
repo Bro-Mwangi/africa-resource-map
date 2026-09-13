@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Africa Resource Map - Interactive Mineral & Investment Opportunities</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 600px;
+            z-index: 1;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .ai-chat {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background: white;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: 10px;
+            text-align: right;
+        }
+
+        .message.ai {
+            background: #e8eef5;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        .info-panel {
+            background: white;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .info-panel h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .resources-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .resource-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                border-left: none;
+                border-top: 2px solid #ddd;
+                max-height: 300px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ Africa Resource Map</h1>
+        <p>Interactive mineral deposits and value-addition investment opportunities across Africa</p>
+    </div>
+
+    <div class="container">
+        <div id="map"></div>
+
+        <div class="sidebar">
+            <h3>🤖 Qwen AI Assistant</h3>
+            <div class="ai-chat">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai">
+                        Hi! I'm your AI assistant. Ask me about mineral deposits, investment opportunities, or resources in any African country.
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="userInput" placeholder="Ask about resources..." />
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h4>📍 Quick Stats</h4>
+                <p id="statsText">Select a location on the map to see details</p>
+                <div class="resources-list" id="resourcesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([0, 20], 3);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Sample mineral deposits data
+        const mineralDeposits = [
+            { country: 'South Africa', coords: [-29.6, 25.5], resources: ['Gold', 'Diamonds', 'Platinum'], investment: 'High' },
+            { country: 'Democratic Republic of Congo', coords: [-4.0, 21.8], resources: ['Cobalt', 'Copper', 'Diamonds'], investment: 'Medium' },
+            { country: 'Nigeria', coords: [9.0, 8.6], resources: ['Oil', 'Tin', 'Bauxite'], investment: 'High' },
+            { country: 'Ghana', coords: [5.6, -0.2], resources: ['Gold', 'Bauxite'], investment: 'High' },
+            { country: 'Zambia', coords: [-13.1, 27.8], resources: ['Copper', 'Cobalt'], investment: 'Medium' },
+            { country: 'Ethiopia', coords: [9.1, 40.4], resources: ['Gold', 'Potash', 'Tantalum'], investment: 'Medium' },
+            { country: 'Morocco', coords: [31.9, -6.9], resources: ['Phosphate', 'Iron Ore'], investment: 'High' },
+        ];
+
+        // Add markers to map
+        mineralDeposits.forEach(deposit => {
+            const marker = L.circleMarker([deposit.coords[0], deposit.coords[1]], {
+                radius: 8,
+                fillColor: '#667eea',
+                color: '#667eea',
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.7
+            }).addTo(map);
+
+            marker.on('click', function() {
+                displayResourceInfo(deposit);
+            });
+
+            marker.bindPopup(`<b>${deposit.country}</b><br>Tap for details`);
+        });
+
+        function displayResourceInfo(deposit) {
+            document.getElementById('statsText').innerHTML = `
+                <strong>${deposit.country}</strong><br>
+                Investment Level: ${deposit.investment}
+            `;
+
+            const resourcesList = document.getElementById('resourcesList');
+            resourcesList.innerHTML = deposit.resources.map(r => 
+                `<div class="resource-tag">${r}</div>`
+            ).join('');
+        }
+
+        // Qwen AI Chat Integration
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+
+            if (message === '') return;
+
+            // Display user message
+            addChatMessage(message, 'user');
+            input.value = '';
+
+            // Simulate AI response (replace with actual Qwen API call)
+            setTimeout(() => {
+                const aiResponse = generateAIResponse(message);
+                addChatMessage(aiResponse, 'ai');
+            }, 500);
+        }
+
+        function addChatMessage(text, sender) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function generateAIResponse(userMessage) {
+            const responses = {
+                'gold': '🏆 Gold is abundantly found in South Africa, Ghana, and Ethiopia. South Africa has the deepest gold mines in the world. Investment opportunities include mining operations and refining facilities.',
+                'copper': '🔨 Copper deposits are significant in Zambia and Democratic Republic of Congo (DRC). These countries are among the top copper producers globally. Great opportunities in value-addition through smelting and manufacturing.',
+                'diamonds': '💎 South Africa and DRC are major diamond producers. Investment in diamond cutting and processing facilities offers high returns.',
+                'investment': '💰 Africa offers diverse investment opportunities: mining operations, value-addition facilities, infrastructure development, and technology integration. Each country has unique advantages.',
+                'default': '📊 I can help you learn about African mineral resources, investment opportunities, and country-specific data. Try asking about specific minerals or countries!'
+            };
+
+            const lowerMessage = userMessage.toLowerCase();
+            for (let key in responses) {
+                if (lowerMessage.includes(key)) {
+                    return responses[key];
+                }
+            }
+            return responses['default'];
+        }
+
+        // Allow Enter key to send messages
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Display initial welcome
+        addChatMessage('👋 Welcome! Explore Africa\'s mineral wealth and investment opportunities.', 'ai');
+    </script>
+</body>
+</html>
